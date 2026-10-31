@@ -9,20 +9,26 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['nickname', 'passwordHash', 'createdAt']) &&
-             data.keys().hasOnly(['nickname', 'passwordHash', 'createdAt', 'lastLoginAt', 'bestSpeed', 'totalSolved']) &&
+             data.keys().hasOnly(['nickname', 'passwordHash', 'createdAt', 'lastLoginAt', 'bestSpeed', 'initialSpeed', 'speedImprovement', 'totalSolved', 'streakDays', 'badges']) &&
              isValidNickname(data.nickname) &&
-             data.passwordHash is string && data.passwordHash.size() <= 64;
+             data.passwordHash is string && data.passwordHash.size() <= 64 &&
+             (!('badges' in data) || (data.badges is list && data.badges.size() <= 40));
     }
 
     function isValidScore(data) {
       return data.keys().hasAll(['nickname', 'mode', 'score', 'correctCount', 'accuracy', 'avgSpeed', 'createdAt']) &&
              data.keys().hasOnly(['nickname', 'mode', 'modeTitle', 'score', 'correctCount', 'wrongCount', 'accuracy', 'avgSpeed', 'createdAt']) &&
              isValidNickname(data.nickname) &&
-             data.mode in ['stage1', 'table_easy', 'table_hard', 'speedrun', 'reverse'] &&
+             data.mode in ['stage1', 'table_easy', 'table_hard', 'speedrun', 'reverse', 'table_single'] &&
              data.score is number && data.score >= 0 &&
              data.correctCount is number && data.correctCount >= 0 &&
              data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 100 &&
              data.avgSpeed is number && data.avgSpeed >= 0;
+    }
+
+    function isValidClassStats(data) {
+      return data.keys().hasAll(['totalProblemsSolved']) &&
+             data.totalProblemsSolved is number && data.totalProblemsSolved >= 0;
     }
 
     // Default deny
@@ -37,7 +43,7 @@ service cloud.firestore {
 
     // Student user accounts
     match /users/{nickname} {
-      allow get: if true;
+      allow get, list: if true;
       allow create: if isValidNickname(nickname) && isValidUser(request.resource.data);
       allow update: if isValidNickname(nickname) && isValidUser(request.resource.data);
       allow delete: if false;
@@ -48,6 +54,13 @@ service cloud.firestore {
       allow get, list: if true;
       allow create: if isValidScore(request.resource.data);
       allow update, delete: if false;
+    }
+
+    // Classroom collective stats
+    match /class_stats/{statId} {
+      allow get, list: if true;
+      allow create, update: if isValidClassStats(request.resource.data);
+      allow delete: if false;
     }
   }
 }

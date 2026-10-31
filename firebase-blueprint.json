@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "Student user account with nickname and password hash",
+      "description": "Student user account with nickname, growth metrics, and effort stats",
       "type": "object",
       "properties": {
         "nickname": {
@@ -30,9 +30,28 @@
           "type": "number",
           "description": "Best average speed in seconds"
         },
+        "initialSpeed": {
+          "type": "number",
+          "description": "Initial record speed in seconds"
+        },
+        "speedImprovement": {
+          "type": "number",
+          "description": "Improvement in seconds compared to initial speed"
+        },
         "totalSolved": {
           "type": "number",
-          "description": "Total solved problems"
+          "description": "Total solved problems for effort ranking"
+        },
+        "streakDays": {
+          "type": "number",
+          "description": "Consecutive attendance streak days"
+        },
+        "badges": {
+          "type": "array",
+          "description": "Array of earned master badge identifiers",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": ["nickname", "passwordHash", "createdAt"]
@@ -51,7 +70,7 @@
         "mode": {
           "type": "string",
           "description": "Training mode identifier",
-          "enum": ["stage1", "table_easy", "table_hard", "speedrun", "reverse"]
+          "enum": ["stage1", "table_easy", "table_hard", "speedrun", "reverse", "table_single"]
         },
         "modeTitle": {
           "type": "string",
@@ -85,6 +104,52 @@
         }
       },
       "required": ["nickname", "mode", "score", "correctCount", "accuracy", "avgSpeed", "createdAt"]
+    },
+    "ClassStats": {
+      "title": "ClassStats",
+      "description": "Classroom collaborative goal and aggregate problem counts",
+      "type": "object",
+      "properties": {
+        "totalProblemsSolved": {
+          "type": "number",
+          "description": "Cumulative problems solved by all students in class"
+        },
+        "targetGoal": {
+          "type": "number",
+          "description": "Current collaborative milestone problem goal"
+        },
+        "averageScore": {
+          "type": "number",
+          "description": "Class average score in 2-minute speedrun (out of 100)"
+        },
+        "targetScore": {
+          "type": "number",
+          "description": "Target average score starting at 80 and increasing by 5 weekly"
+        },
+        "currentWeek": {
+          "type": "number",
+          "description": "Current week number for progressive target calculation"
+        },
+        "totalScoreSum": {
+          "type": "number",
+          "description": "Sum of all 2-minute speedrun scores"
+        },
+        "totalParticipants": {
+          "type": "number",
+          "description": "Total speedrun attempts submitted"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start date of the class challenge"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last milestone update timestamp"
+        }
+      },
+      "required": ["totalProblemsSolved"]
     }
   },
   "firestore": {
@@ -99,6 +164,12 @@
         "$ref": "#/entities/GameScore"
       },
       "description": "Hall of fame records for all learners"
+    },
+    "/class_stats/{statId}": {
+      "schema": {
+        "$ref": "#/entities/ClassStats"
+      },
+      "description": "Classroom collective progress and milestones"
     }
   }
 }
