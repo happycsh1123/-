@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, RotateCcw, Home, Sparkles, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import {
+  Trophy,
+  RotateCcw,
+  Home,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  TrendingUp,
+  Users,
+  Flame,
+} from 'lucide-react';
 import { GameResultData } from './GameScreen';
-import { StudentProfile, recordGameScore } from '../services/studentService';
+import { StudentProfile, recordGameScore, RecordScoreResult } from '../services/studentService';
 import { playSound } from '../utils/sound';
 
 interface ResultScreenProps {
@@ -21,20 +32,11 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   onGoToMenu,
 }) => {
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | 'idle'>('idle');
+  const [growthData, setGrowthData] = useState<RecordScoreResult | null>(null);
 
   const { avgSpeed, correctCount, accuracy, tableTimes } = result;
 
-  // Trigger celebration on load
   useEffect(() => {
-    if (avgSpeed > 0 && avgSpeed <= 1.5 && accuracy >= 90) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-      playSound('fanfare');
-    }
-
     // Auto-save to Firebase if student profile exists
     if (student && student.nickname) {
       setSaveStatus('saving');
@@ -48,13 +50,33 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         accuracy,
         avgSpeed,
       })
-        .then(() => {
+        .then((res) => {
           setSaveStatus('saved');
+          setGrowthData(res);
+
+          // Confetti for either 1.5s master OR beating their own personal best speed!
+          if ((avgSpeed > 0 && avgSpeed <= 1.5 && accuracy >= 90) || res.improvedSeconds > 0) {
+            confetti({
+              particleCount: 110,
+              spread: 70,
+              origin: { y: 0.6 },
+            });
+            playSound('fanfare');
+          }
         })
         .catch((err) => {
           console.error('Failed to record game score:', err);
           setSaveStatus('error');
         });
+    } else {
+      if (avgSpeed > 0 && avgSpeed <= 1.5 && accuracy >= 90) {
+        confetti({
+          particleCount: 90,
+          spread: 60,
+          origin: { y: 0.6 },
+        });
+        playSound('fanfare');
+      }
     }
   }, [accuracy, avgSpeed, correctCount, result, student]);
 
@@ -89,7 +111,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
       title: '꾸준히 연습해 봐요!',
       descClass: 'bg-amber-950/30 border-amber-500/30 text-amber-200',
-      desc: `💡 키보드 넘버패드 연습 권장 (평균 ${avgSpeed.toFixed(1)}초): 아직 키보드 숫자 위치가 다소 헷갈릴 수 있습니다. 1단계에서 손가락 위치를 먼저 천천히 익히면 순식간에 빨라집니다.`,
+      desc: `💡 키보드 넘버패드 연습 권장 (평균 ${avgSpeed.toFixed(1)}초): 타자 속도는 연습할수록 빨라집니다. 1단계에서 손가락 위치를 먼저 천천히 익히면 누구나 1.5초를 달성할 수 있어요!`,
     };
   } else if (avgSpeed > 1.5) {
     evalConfig = {
@@ -98,7 +120,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       badgeClass: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
       title: '키보드 적응 완료!',
       descClass: 'bg-indigo-950/30 border-indigo-500/30 text-indigo-200',
-      desc: `👍 빠른 속도 (평균 ${avgSpeed.toFixed(1)}초): 손가락 위치가 눈에 익고 있습니다! 매일 2분씩 진행하면 목표인 1.5초 이내 자동반사 단계에 완전히 진입합니다.`,
+      desc: `👍 빠른 속도 (평균 ${avgSpeed.toFixed(1)}초): 손가락 위치가 눈에 익고 있습니다! 매일 꾸준히 진행하면 목표인 1.5초 이내 자동반사 단계에 완전히 진입합니다.`,
     };
   }
 
@@ -116,26 +138,73 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <h2 className="text-2xl sm:text-3xl font-black font-jua text-white mt-2">
             {evalConfig.title}
           </h2>
-          <p className="text-xs text-slate-400 mt-1">오늘의 연산 속도 및 정확도 평가 결과입니다.</p>
+          <p className="text-xs text-slate-400 mt-1">오늘의 연산 속도 및 개인 성장 분석 결과입니다.</p>
         </div>
 
-        {/* Score Grid */}
-        <div className="grid grid-cols-3 gap-2 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-700/80 text-left">
-          <div className="p-1.5">
-            <div className="text-[11px] text-slate-400">평균 문항 속도</div>
-            <div className="text-xl font-black text-indigo-400 font-jua mt-0.5">
+        {/* 🌟 1. Personal Growth Highlight (어제의 나와의 경쟁) */}
+        {growthData && growthData.improvedSeconds > 0 && (
+          <div className="bg-gradient-to-r from-emerald-950/80 via-indigo-950/80 to-emerald-950/80 border-2 border-emerald-400/60 rounded-2xl p-4 text-left shadow-lg">
+            <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-sm font-jua">
+              <TrendingUp className="w-5 h-5 text-emerald-400 animate-pulse" />
+              <span>🎉 축하합니다! 어제의 나를 이겼어요!</span>
+            </div>
+            <p className="text-xs text-emerald-200 mt-1 leading-relaxed">
+              이전 최고 속도보다 <strong className="text-amber-300 font-black text-sm">{growthData.improvedSeconds}초 단축</strong>되었습니다! 속도 단축 성장왕 랭킹에 반영되었습니다.
+            </p>
+          </div>
+        )}
+
+        {/* 🤝 2. Classroom Collective Contribution (학급 협동 2분 평균 점수 및 문항 기여) - Single line */}
+        {correctCount > 0 && (
+          <div className="bg-slate-900/90 border border-indigo-500/30 rounded-2xl p-2.5 sm:p-3 text-left flex items-center justify-between text-xs whitespace-nowrap gap-2 overflow-hidden shadow-inner">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center font-bold shrink-0">
+                <Users className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 truncate text-[11px] sm:text-xs">
+                {result.mode === 'speedrun' ? (
+                  <span>
+                    우리 반 2분 평균 기여: 이번 스피드런{' '}
+                    <strong className="text-amber-300 font-extrabold font-jua">
+                      {Math.min(100, Math.round(Math.min(70, correctCount * 2.5) + accuracy * 0.3))}점
+                    </strong>
+                    {' '}반영 🎯
+                  </span>
+                ) : (
+                  <span>
+                    우리 반 협동 퀘스트 기여:{' '}
+                    <strong className="text-amber-300">+{correctCount}문제</strong> 합산 🎯
+                  </span>
+                )}
+              </div>
+            </div>
+            {growthData && (
+              <span className="text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-700/50 px-2 py-0.5 rounded text-[10px] shrink-0">
+                누적 {growthData.studentTotalSolved}개
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Score Grid - Strictly single-line in each cell */}
+        <div className="grid grid-cols-3 gap-2 bg-slate-900/90 p-3 rounded-2xl border border-slate-700/80 text-center whitespace-nowrap">
+          <div className="p-1">
+            <div className="text-[11px] text-slate-400 leading-tight">평균 속도</div>
+            <div className="text-xl font-black text-indigo-400 font-jua mt-0.5 leading-tight">
               {avgSpeed > 0 ? `${avgSpeed.toFixed(2)}초` : '-'}
             </div>
           </div>
-          <div className="p-1.5 border-x border-slate-800">
-            <div className="text-[11px] text-slate-400">맞힌 문제</div>
-            <div className="text-xl font-black text-emerald-400 font-jua mt-0.5">
+          <div className="p-1 border-x border-slate-800">
+            <div className="text-[11px] text-slate-400 leading-tight">맞힌 문제</div>
+            <div className="text-xl font-black text-emerald-400 font-jua mt-0.5 leading-tight">
               {correctCount}문항
             </div>
           </div>
-          <div className="p-1.5">
-            <div className="text-[11px] text-slate-400">정답률</div>
-            <div className="text-xl font-black text-amber-400 font-jua mt-0.5">{accuracy}%</div>
+          <div className="p-1">
+            <div className="text-[11px] text-slate-400 leading-tight">정답률</div>
+            <div className="text-xl font-black text-amber-400 font-jua mt-0.5 leading-tight">
+              {accuracy}%
+            </div>
           </div>
         </div>
 
@@ -154,8 +223,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             {slowestTable && slowestTime > 1.8 ? (
               <>
                 <strong className="text-amber-300 font-extrabold">{slowestTable}단</strong>의 반응 속도(평균{' '}
-                {slowestTime.toFixed(1)}초)가 다른 단에 비해 조금 느립니다. 2단계의 해당 단을
-                집중 연습해보세요!
+                {slowestTime.toFixed(1)}초)가 조금 느립니다. 2단계의 해당 단을 집중 연습해보세요!
               </>
             ) : (
               '모든 단에서 치우침 없이 빠르고 고른 반응 속도를 보여주었습니다!'
@@ -193,7 +261,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
           >
             <Trophy className="w-5 h-5 text-slate-950" />
-            <span className="text-sm font-jua tracking-wide">🏆 실시간 명예의 전당에서 내 순위 확인하기</span>
+            <span className="text-sm font-jua tracking-wide">🏆 명예의 전당에서 노력왕 • 성장왕 순위 보기</span>
             <ArrowRight className="w-4 h-4 text-slate-950" />
           </button>
 

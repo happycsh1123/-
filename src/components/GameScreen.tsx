@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, ArrowLeft } from 'lucide-react';
 import { playSound } from '../utils/sound';
 
-export type GameMode = 'stage1' | 'table_easy' | 'table_hard' | 'speedrun' | 'reverse';
+export type GameMode = 'stage1' | 'table_easy' | 'table_hard' | 'speedrun' | 'reverse' | 'table_single';
 
 export interface GameResultData {
   mode: GameMode;
@@ -17,8 +17,11 @@ export interface GameResultData {
 
 interface GameScreenProps {
   mode: GameMode;
+  targetTable?: number;
+  studentNickname?: string;
   onFinish: (result: GameResultData) => void;
   onQuit: () => void;
+  onBadgeEarned?: (badgeId: string) => void;
 }
 
 interface Problem {
@@ -52,7 +55,14 @@ function getValidFactors(prod: number): string[] {
   return pairs;
 }
 
-export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }) => {
+export const GameScreen: React.FC<GameScreenProps> = ({
+  mode,
+  targetTable = 7,
+  studentNickname,
+  onFinish,
+  onQuit,
+  onBadgeEarned,
+}) => {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [userInput, setUserInput] = useState('');
   const [totalSolved, setTotalSolved] = useState(0);
@@ -61,6 +71,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
   const [liveSpeed, setLiveSpeed] = useState('0.0초');
   const [feedback, setFeedback] = useState<{ text: string; isCorrect: boolean } | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [consecutiveStreak, setConsecutiveStreak] = useState(0);
 
   // Timers
   const [timeRemaining, setTimeRemaining] = useState(120);
@@ -69,14 +80,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
   const problemStartTimeRef = useRef<number>(Date.now());
   const isProcessingRef = useRef<boolean>(false);
   const tableTimesRef = useRef<{ [key: number]: number[] }>({});
+  const tableStreakRef = useRef<{ [key: number]: number }>({});
   const problemHistoryRef = useRef<string[]>([]);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initialize table times
   useEffect(() => {
     tableTimesRef.current = {};
+    tableStreakRef.current = {};
     for (let i = 2; i <= 9; i++) {
       tableTimesRef.current[i] = [];
+      tableStreakRef.current[i] = 0;
     }
   }, []);
 
@@ -92,6 +106,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
         return '⚡ 3단계: 5학년 실전 스피드런';
       case 'reverse':
         return '🔍 4단계: 거꾸로 구구단 (약수)';
+      case 'table_single':
+        return `🎯 ${targetTable}단 10문제 마스터 챌린지`;
     }
   };
 
@@ -117,6 +133,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
     const accuracy = totalAttempts > 0 ? Math.round((correctCount / totalAttempts) * 100) : 100;
     const avgSpeed = Number(calculateOverallAvgSpeed().toFixed(2));
 
+    if (mode === 'speedrun' && avgSpeed > 0 && avgSpeed <= 1.5 && accuracy >= 90) {
+      onBadgeEarned?.('badge_speedrun_15');
+    }
+
     onFinish({
       mode,
       modeTitle: getModeTitle(mode),
@@ -127,13 +147,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
       avgSpeed,
       tableTimes: { ...tableTimesRef.current },
     });
-  }, [calculateOverallAvgSpeed, correctCount, mode, onFinish, totalSolved, wrongCount]);
+  }, [calculateOverallAvgSpeed, correctCount, mode, onBadgeEarned, onFinish, totalSolved, wrongCount]);
 
   const generateProblem = useCallback((): Problem => {
     let minA = 2, maxA = 9;
     let minB = 2, maxB = 9;
 
-    if (mode === 'table_easy') {
+    if (mode === 'table_single' && targetTable) {
+      minA = targetTable;
+      maxA = targetTable;
+      minB = 1;
+      maxB = 9;
+    } else if (mode === 'table_easy') {
       minA = 2; maxA = 5;
     } else if (mode === 'table_hard') {
       minA = 6; maxA = 9;
@@ -249,6 +274,29 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
         if (problem.a >= 2 && problem.a <= 9) {
           if (!tableTimesRef.current[problem.a]) tableTimesRef.current[problem.a] = [];
           tableTimesRef.current[problem.a].push(timeTaken);
+
+          // Track consecutive correct answers for this table
+          const currentTableStreak = (tableStreakRef.current[problem.a] || 0) + 1;
+          tableStreakRef.current[problem.a] = currentTableStreak;
+          setConsecutiveStreak(currentTableStreak);
+
+          // 10 consecutive correct answers on this table unlocks the Master Badge!
+          if (currentTableStreak === 10) {
+            onBadgeEarned?.(`badge_table_${problem.a}`);
+            if (mode === 'table_single') {
+              setTimeout(() => {
+                handleFinish();
+              }, 400);
+              return;
+            }
+          }
+        }
+
+        if (mode === 'stage1' && correctCount + 1 >= 10) {
+          onBadgeEarned?.('badge_keyboard_master');
+        }
+        if (mode === 'reverse' && correctCount + 1 >= 10) {
+          onBadgeEarned?.('badge_reverse_master');
         }
 
         const avg = calculateOverallAvgSpeed();
@@ -267,9 +315,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
         playSound('wrong');
         setWrongCount((prev) => prev + 1);
 
-        const correctAns = problem.isReverse ? '약수의 곱' : problem.targetAnswer;
+        if (problem.a >= 2 && problem.a <= 9) {
+          tableStreakRef.current[problem.a] = 0;
+          setConsecutiveStreak(0);
+        }
+
+        let hintText = `❌ 오답! 정답: ${problem.targetAnswer}`;
+        if (problem.isReverse && problem.validAnswers && problem.validAnswers.length > 0) {
+          const sample = problem.validAnswers[0];
+          hintText = `❌ 오답! ${problem.rawProduct}는 ${sample[0]} × ${sample[1]} = ${problem.rawProduct}`;
+        } else if (!problem.isReverse && problem.b > 1) {
+          const prevMultiple = problem.a * (problem.b - 1);
+          hintText = `❌ 오답! 💡 ${problem.a}×${problem.b}은 ${problem.a}×${problem.b - 1}(${prevMultiple}) + ${problem.a} = ${problem.targetAnswer}!`;
+        }
+
         setFeedback({
-          text: `❌ 오답! (정답: ${correctAns})`,
+          text: hintText,
           isCorrect: false,
         });
 
@@ -277,7 +338,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
           setFeedback(null);
           setUserInput('');
           isProcessingRef.current = false;
-        }, 550);
+        }, 900);
       }
     },
     [calculateOverallAvgSpeed, nextProblem, problem]
@@ -350,21 +411,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
 
   return (
     <div className="w-full max-w-xl mx-auto space-y-3.5">
-      {/* Top Bar with Stage, Timer, and Speed */}
-      <div className="bg-slate-800/90 p-3 rounded-2xl border border-slate-700/80 flex items-center justify-between shadow-lg">
-        <div>
-          <span className="text-[11px] text-slate-400">진행 문제</span>
-          <div className="font-bold text-slate-100 text-sm">
-            해결: <span className="text-emerald-400 font-extrabold">{correctCount}</span>개
+      {/* Top Bar with Stage, Timer, and Speed - Single line layout */}
+      <div className="bg-slate-800/90 p-2.5 sm:p-3 rounded-2xl border border-slate-700/80 flex items-center justify-between shadow-lg whitespace-nowrap">
+        <div className="shrink-0">
+          <span className="text-[11px] text-slate-400 block leading-tight">
+            {mode === 'table_single' ? '연속 정답' : '진행 문제'}
+          </span>
+          <div className="font-bold text-slate-100 text-sm flex items-center gap-1 mt-0.5">
+            {mode === 'table_single' ? (
+              <>
+                <span className="text-amber-400 font-extrabold font-jua text-base">{consecutiveStreak}</span>
+                <span className="text-slate-400 text-xs">/ 10연속</span>
+              </>
+            ) : (
+              <>
+                해결: <span className="text-emerald-400 font-extrabold">{correctCount}</span>개
+              </>
+            )}
           </div>
         </div>
 
-        <div className="text-center">
-          <span className="text-[11px] text-slate-400">
+        <div className="text-center shrink-0 px-2">
+          <span className="text-[11px] text-slate-400 block leading-tight">
             {isCountDown ? '남은 시간' : '경과 시간'}
           </span>
           <div
-            className={`font-black text-xl font-jua ${
+            className={`font-black text-xl font-jua leading-tight mt-0.5 ${
               isCountDown && timeRemaining <= 15 ? 'text-rose-400 animate-pulse' : 'text-amber-400'
             }`}
           >
@@ -372,9 +444,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
           </div>
         </div>
 
-        <div className="text-right">
-          <span className="text-[11px] text-slate-400">평균 문항 속도</span>
-          <div className="font-extrabold text-indigo-400 text-sm">{liveSpeed}</div>
+        <div className="text-right shrink-0">
+          <span className="text-[11px] text-slate-400 block leading-tight">평균 속도</span>
+          <div className="font-extrabold text-indigo-400 text-sm mt-0.5">{liveSpeed}</div>
         </div>
       </div>
 
@@ -433,20 +505,36 @@ export const GameScreen: React.FC<GameScreenProps> = ({ mode, onFinish, onQuit }
       {/* On-Screen Virtual Numpad */}
       <div className="space-y-1.5">
         <div className="text-[11px] text-center text-slate-400 flex items-center justify-center gap-2">
-          <span>⌨️ 키보드 오른쪽 숫자패드(0~9, Enter, Backspace) 지원</span>
+          {mode === 'stage1' ? (
+            <span className="text-amber-300 font-bold bg-amber-950/60 px-3 py-1 rounded-full border border-amber-600/40">
+              💡 5번 키(가운데)에 손가락을 올리고 천천히 위치를 익혀보세요!
+            </span>
+          ) : (
+            <span>⌨️ 키보드 오른쪽 숫자패드(0~9, Enter, Backspace) 지원</span>
+          )}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((num) => (
-            <button
-              key={num}
-              onClick={() => pressNum(num)}
-              className={`key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3.5 rounded-2xl text-xl font-black text-white transition active:scale-95 shadow-md cursor-pointer ${
-                activeKey === num ? 'key-active' : ''
-              }`}
-            >
-              {num}
-            </button>
-          ))}
+          {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((num) => {
+            const isHomeKey = num === '5' && mode === 'stage1';
+            return (
+              <button
+                key={num}
+                onClick={() => pressNum(num)}
+                className={`key-btn relative bg-slate-800 hover:bg-slate-700 border py-3.5 rounded-2xl text-xl font-black text-white transition active:scale-95 shadow-md cursor-pointer ${
+                  isHomeKey
+                    ? 'border-amber-400 ring-2 ring-amber-500/30'
+                    : 'border-slate-700'
+                } ${activeKey === num ? 'key-active' : ''}`}
+              >
+                {num}
+                {isHomeKey && (
+                  <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-300">
+                    기준점
+                  </span>
+                )}
+              </button>
+            );
+          })}
 
           <button
             onClick={pressClear}
