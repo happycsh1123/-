@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>초등 5학년 구구단 스피드 마스터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: manipulation;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        .key-btn:active, .key-active {
+            transform: scale(0.92);
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            border-color: #818cf8 !important;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        @keyframes pop-success {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: pop-success 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Top Header -->
+    <header class="w-full max-w-xl mx-auto px-4 pt-4 pb-2 flex justify-between items-center border-b border-slate-800">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">⚡</span>
+            <div>
+                <h1 class="text-lg font-bold font-jua text-indigo-400 leading-none">구구단 스피드 마스터</h1>
+                <p class="text-xs text-slate-400">키보드 적응부터 5학년 완벽 대비까지</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 text-sm">
+            <div class="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 flex items-center gap-1.5">
+                <span class="text-amber-400 font-bold">🔥 출석:</span>
+                <span id="streak-count" class="font-extrabold text-amber-300">0일</span>
+            </div>
+            <button id="sound-toggle" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-700 transition">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-xl mx-auto px-4 py-4 flex-1 flex flex-col justify-center">
+
+        <!-- MODE SELECT SCREEN -->
+        <div id="screen-select" class="space-y-4">
+            <div class="text-center my-2 space-y-1">
+                <span class="bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full border border-indigo-500/30 font-semibold">
+                    🎯 목표: 키보드 입력 적응 후 1.5초 자동반사!
+                </span>
+                <h2 class="text-2xl font-extrabold text-white font-jua">단계별 훈련 모드 선택</h2>
+            </div>
+
+            <!-- Stage Level Selector Grid -->
+            <div class="grid grid-cols-1 gap-2.5">
+                
+                <!-- Stage 1: Keypad Practice (No Time Limit) -->
+                <button onclick="startGame('stage1')" class="group bg-slate-800 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 transition text-left flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] bg-emerald-950/90 text-emerald-300 px-2 py-0.5 rounded font-bold">1단계</span>
+                            <span class="text-xs text-slate-400">시간 제한 없음</span>
+                        </div>
+                        <h3 class="text-lg font-bold font-jua text-white mt-1">⌨️ 키보드 적응 & 기초 연습</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">키패드 위치를 익히며 천천히 문제 푸는 단계</p>
+                    </div>
+                    <div class="text-2xl group-hover:scale-110 transition">🖐️</div>
+                </button>
+
+                <!-- Stage 2: Specific Table Focus -->
+                <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] bg-sky-950/90 text-sky-300 px-2 py-0.5 rounded font-bold">2단계</span>
+                            <span class="text-xs text-slate-400">부분 집중</span>
+                        </div>
+                        <span class="text-xs text-slate-400">집중 단 선택</span>
+                    </div>
+                    <h3 class="text-lg font-bold font-jua text-white">📚 단별 집중 훈련</h3>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="startGame('table_easy')" class="bg-slate-700 hover:bg-indigo-600/60 p-2.5 rounded-xl border border-slate-600 text-xs font-bold text-center transition">
+                            🌱 기초 (2~5단)
+                        </button>
+                        <button onclick="startGame('table_hard')" class="bg-slate-700 hover:bg-indigo-600/60 p-2.5 rounded-xl border border-slate-600 text-xs font-bold text-center transition">
+                            🔥 고난도 (6~9단)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stage 3: Speedrun Master -->
+                <button onclick="startGame('speedrun')" class="group relative bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 p-4 rounded-2xl shadow-lg transition text-left flex items-center justify-between border border-indigo-400/30">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] bg-indigo-950/60 text-indigo-200 px-2 py-0.5 rounded font-bold">3단계 추천</span>
+                            <span class="text-xs text-indigo-100">2분 제한시간</span>
+                        </div>
+                        <h3 class="text-lg font-bold font-jua text-white mt-1">⚡ 5학년 실전 스피드런</h3>
+                        <p class="text-xs text-indigo-100/80 mt-0.5">전체 무작위 문제 1.5초 자동반사 마스터!</p>
+                    </div>
+                    <div class="text-3xl group-hover:translate-x-1 transition">🚀</div>
+                </button>
+
+                <!-- Stage 4: Reverse Multiplication -->
+                <button onclick="startGame('reverse')" class="group bg-slate-800 hover:bg-slate-750 p-4 rounded-2xl border border-slate-700 transition text-left flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] bg-amber-950/80 text-amber-300 px-2 py-0.5 rounded font-bold">4단계 필살기</span>
+                            <span class="text-xs text-slate-400">약수·통분 대비</span>
+                        </div>
+                        <h3 class="text-lg font-bold font-jua text-white mt-1">🔍 거꾸로 구구단 (약수 찾기)</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">결과(예: 36)를 보고 두 곱셈 수(4×9 또는 6×6) 떠올리기</p>
+                    </div>
+                    <div class="text-2xl group-hover:scale-110 transition">💡</div>
+                </button>
+            </div>
+
+            <!-- Grade 5 Tip Card -->
+            <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1">
+                <div class="font-bold text-slate-300 flex items-center gap-1">
+                    <span>💡 키보드 입력 팁</span>
+                </div>
+                <p>키보드의 **오른쪽 넘버패드(숫자키)**를 사용하고, 처음엔 1단계에서 손가락 위치를 천천히 익히면 순식간에 반응 속도가 빨라집니다!</p>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="screen-game" class="hidden space-y-3">
+            <!-- Progress & Stats Bar -->
+            <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-400">진행 문제</span>
+                    <div class="font-bold text-slate-200 text-sm" id="game-progress-text">해결: 0개</div>
+                </div>
+                <div class="text-center">
+                    <span class="text-xs text-slate-400" id="timer-label">남은 시간</span>
+                    <div class="font-extrabold text-amber-400 text-lg font-jua" id="game-timer">02:00</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400">현재 평균 속도</span>
+                    <div class="font-bold text-indigo-400 text-sm" id="live-speed">0.0초</div>
+                </div>
+            </div>
+
+            <!-- Problem Visual Display -->
+            <div id="problem-card" class="relative bg-slate-800 border-2 border-indigo-500/40 rounded-2xl p-5 text-center shadow-xl flex flex-col items-center justify-center min-h-[170px] transition-all duration-200">
+                <div id="problem-tag" class="absolute top-2.5 left-3 text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded font-semibold border border-indigo-700/50">
+                    일반 구구단
+                </div>
+
+                <!-- Instant Feedback Overlay Text -->
+                <div id="feedback-message" class="text-xs font-bold h-4 text-emerald-400 transition-opacity opacity-0">
+                    ⭕ 정답입니다!
+                </div>
+                
+                <div class="text-4xl sm:text-5xl font-extrabold text-white font-jua tracking-wider my-1 flex items-center justify-center gap-3">
+                    <span id="question-text">7 × 8 = ?</span>
+                </div>
+
+                <!-- Guidance Note for Reverse Mode -->
+                <p id="reverse-hint" class="text-[11px] text-amber-300/90 hidden mt-0.5">
+                    💡 곱해서 나오는 두 한 자리 숫자를 연속으로 입력하세요 (예: 12 ➔ 26 또는 34)
+                </p>
+
+                <!-- Answer Preview Display -->
+                <div class="mt-2 h-10 flex items-center justify-center">
+                    <div id="user-input-display" class="bg-slate-900 border border-slate-700 min-w-[120px] px-4 py-1.5 rounded-lg text-2xl font-bold text-indigo-300 tracking-widest text-center min-h-[42px] transition-all">
+                        
+                    </div>
+                </div>
+            </div>
+
+            <!-- On-Screen Virtual Numpad (Maps to Keyboard) -->
+            <div class="space-y-1">
+                <div class="text-[11px] text-center text-slate-400 flex items-center justify-center gap-2">
+                    <span>⌨️ 키보드 오른쪽 넘버패드(0~9)와 연동됩니다</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-key-7" onclick="pressNum('7')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">7</button>
+                    <button id="btn-key-8" onclick="pressNum('8')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">8</button>
+                    <button id="btn-key-9" onclick="pressNum('9')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">9</button>
+                    
+                    <button id="btn-key-4" onclick="pressNum('4')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">4</button>
+                    <button id="btn-key-5" onclick="pressNum('5')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">5</button>
+                    <button id="btn-key-6" onclick="pressNum('6')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">6</button>
+                    
+                    <button id="btn-key-1" onclick="pressNum('1')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">1</button>
+                    <button id="btn-key-2" onclick="pressNum('2')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">2</button>
+                    <button id="btn-key-3" onclick="pressNum('3')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">3</button>
+                    
+                    <button id="btn-key-clear" onclick="pressClear()" class="key-btn bg-rose-950/60 hover:bg-rose-900 border border-rose-800/50 py-3 rounded-xl text-xs font-bold text-rose-300">지우기</button>
+                    <button id="btn-key-0" onclick="pressNum('0')" class="key-btn bg-slate-800 hover:bg-slate-700 border border-slate-700 py-3 rounded-xl text-xl font-extrabold text-white transition">0</button>
+                    <button id="btn-key-enter" onclick="pressSubmit()" class="key-btn bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 py-3 rounded-xl text-sm font-bold text-white shadow-lg shadow-indigo-600/30">확인</button>
+                </div>
+            </div>
+
+            <!-- Prominent Return / Quit Navigation Bar -->
+            <div class="flex items-center justify-between pt-2 mt-1 border-t border-slate-800">
+                <button onclick="quitGame()" class="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-indigo-600/80 active:scale-95 text-slate-200 hover:text-white rounded-xl border border-slate-700 font-bold text-xs transition shadow-md">
+                    <span>🏠</span>
+                    <span>메뉴로 돌아가기</span>
+                </button>
+                <span class="text-[11px] text-slate-400 bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-800">
+                    💡 키보드 <kbd class="bg-slate-700 px-1 py-0.5 rounded text-indigo-300">ESC</kbd> 누름 지원
+                </span>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <div id="screen-result" class="hidden space-y-4">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 text-center space-y-4 shadow-xl">
+                <div class="text-5xl" id="result-emoji">🎉</div>
+                
+                <div>
+                    <span id="result-badge" class="bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full border border-indigo-500/30 font-bold">
+                        훈련 결과 완료
+                    </span>
+                    <h2 class="text-2xl font-bold font-jua text-white mt-2" id="result-title">훈련 완료!</h2>
+                    <p class="text-xs text-slate-400 mt-1" id="result-subtitle">오늘의 연산 속도 및 정확도입니다.</p>
+                </div>
+
+                <!-- Score Grid -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-left">
+                    <div class="p-1.5">
+                        <div class="text-[10px] text-slate-400">평균 문항 속도</div>
+                        <div id="res-avg-speed" class="text-lg font-extrabold text-indigo-400 font-jua">1.2초</div>
+                    </div>
+                    <div class="p-1.5">
+                        <div class="text-[10px] text-slate-400">맞힌 문제</div>
+                        <div id="res-solved" class="text-lg font-extrabold text-emerald-400 font-jua">45개</div>
+                    </div>
+                    <div class="p-1.5">
+                        <div class="text-[10px] text-slate-400">정답률</div>
+                        <div id="res-accuracy" class="text-lg font-extrabold text-amber-400 font-jua">98%</div>
+                    </div>
+                </div>
+
+                <!-- Speed Evaluation Box -->
+                <div id="speed-eval-box" class="p-3.5 rounded-xl border text-left text-xs leading-relaxed">
+                    <!-- Dynamic evaluation text inserted via JS -->
+                </div>
+
+                <!-- Weak Table Advice -->
+                <div class="bg-slate-900/50 p-3 rounded-xl text-xs text-left border border-slate-800">
+                    <span class="font-bold text-slate-300">📌 분석 및 보완점:</span>
+                    <p id="weakness-text" class="text-slate-400 mt-0.5">모든 단에서 고른 반응 속도를 보여주었습니다!</p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 pt-1">
+                    <button onclick="startGame(currentMode)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold text-white text-sm shadow-lg transition">
+                        다시 도전 🔄
+                    </button>
+                    <button onclick="showSelectScreen()" class="bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold text-slate-200 text-sm transition">
+                        메뉴로 🏠
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-xl mx-auto px-4 py-3 text-center text-xs text-slate-500 border-t border-slate-800">
+        매일 2분 연습으로 수학에 자신감을 높여보세요!
+    </footer>
+
+    <script>
+        // Audio Synthesizer (Web Audio API)
+        let soundEnabled = true;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(450, now);
+                gain.gain.setValueAtTime(0.04, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.06); // E5
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.setValueAtTime(130, now + 0.08);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'finish') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+        }
+
+        // Game State
+        let currentMode = 'stage1'; 
+        let currentProblem = null;
+        let userInput = '';
+        let totalSolved = 0;
+        let correctAnswers = 0;
+        let wrongAnswers = 0;
+        let startTime = 0;
+        let problemStartTime = 0;
+        let timerInterval = null;
+        let timeRemaining = 120;
+        let elapsedSeconds = 0;
+        let isProcessing = false; // prevents double click during flash feedback
+        
+        let tableTimes = {};
+        let problemHistory = []; // 최근 문제 이력 (중복 방지용)
+
+        // DOM Elements
+        const screenSelect = document.getElementById('screen-select');
+        const screenGame = document.getElementById('screen-game');
+        const screenResult = document.getElementById('screen-result');
+        const userInputDisplay = document.getElementById('user-input-display');
+        const questionText = document.getElementById('question-text');
+        const problemTag = document.getElementById('problem-tag');
+        const gameProgressText = document.getElementById('game-progress-text');
+        const gameTimer = document.getElementById('game-timer');
+        const timerLabel = document.getElementById('timer-label');
+        const liveSpeed = document.getElementById('live-speed');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const problemCard = document.getElementById('problem-card');
+        const reverseHint = document.getElementById('reverse-hint');
+
+        // Streak Tracker
+        function initStreak() {
+            const lastDate = localStorage.getItem('gugudan_last_date');
+            let streak = parseInt(localStorage.getItem('gugudan_streak') || '0', 10);
+            document.getElementById('streak-count').innerText = streak + '일';
+        }
+
+        function updateStreakOnFinish() {
+            const lastDate = localStorage.getItem('gugudan_last_date');
+            let streak = parseInt(localStorage.getItem('gugudan_streak') || '0', 10);
+            const today = new Date().toDateString();
+
+            if (lastDate !== today) {
+                streak += 1;
+                localStorage.setItem('gugudan_streak', streak.toString());
+                localStorage.setItem('gugudan_last_date', today);
+                document.getElementById('streak-count').innerText = streak + '일';
+            }
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay(seconds) {
+            gameTimer.innerText = formatTime(seconds);
+        }
+
+        function updateTimerDisplayElapsed(seconds) {
+            gameTimer.innerText = formatTime(seconds);
+        }
+
+        // Start Game Engine
+        function startGame(mode) {
+            currentMode = mode;
+            totalSolved = 0;
+            correctAnswers = 0;
+            wrongAnswers = 0;
+            userInput = '';
+            isProcessing = false;
+            tableTimes = {};
+            problemHistory = [];
+            for (let i = 2; i <= 9; i++) tableTimes[i] = [];
+
+            screenSelect.classList.add('hidden');
+            screenResult.classList.add('hidden');
+            screenGame.classList.remove('hidden');
+
+            startTime = Date.now();
+            if (timerInterval) clearInterval(timerInterval);
+
+            // Configure timers & tags per stage
+            if (mode === 'stage1') {
+                problemTag.innerText = '⌨️ 1단계: 키보드 적응 연습';
+                timerLabel.innerText = '경과 시간';
+                elapsedSeconds = 0;
+                updateTimerDisplayElapsed(0);
+                timerInterval = setInterval(() => {
+                    elapsedSeconds++;
+                    updateTimerDisplayElapsed(elapsedSeconds);
+                }, 1000);
+            } else if (mode === 'table_easy') {
+                problemTag.innerText = '🌱 2단계: 2~5단 집중';
+                timerLabel.innerText = '경과 시간';
+                elapsedSeconds = 0;
+                updateTimerDisplayElapsed(0);
+                timerInterval = setInterval(() => {
+                    elapsedSeconds++;
+                    updateTimerDisplayElapsed(elapsedSeconds);
+                }, 1000);
+            } else if (mode === 'table_hard') {
+                problemTag.innerText = '🔥 2단계: 6~9단 집중';
+                timerLabel.innerText = '경과 시간';
+                elapsedSeconds = 0;
+                updateTimerDisplayElapsed(0);
+                timerInterval = setInterval(() => {
+                    elapsedSeconds++;
+                    updateTimerDisplayElapsed(elapsedSeconds);
+                }, 1000);
+            } else if (mode === 'speedrun') {
+                problemTag.innerText = '⚡ 3단계: 2분 스피드런';
+                timerLabel.innerText = '남은 시간';
+                timeRemaining = 120;
+                updateTimerDisplay(120);
+                timerInterval = setInterval(() => {
+                    timeRemaining--;
+                    updateTimerDisplay(timeRemaining);
+                    if (timeRemaining <= 0) endGame();
+                }, 1000);
+            } else if (mode === 'reverse') {
+                problemTag.innerText = '🔍 4단계: 거꾸로 구구단 (약수)';
+                timerLabel.innerText = '남은 시간';
+                timeRemaining = 120;
+                updateTimerDisplay(120);
+                timerInterval = setInterval(() => {
+                    timeRemaining--;
+                    updateTimerDisplay(timeRemaining);
+                    if (timeRemaining <= 0) endGame();
+                }, 1000);
+            }
+
+            nextProblem();
+        }
+
+        // Problem Generator with Repetition Control & Diverse Factors
+        function generateProblem() {
+            let minA = 2, maxA = 9;
+            let minB = 2, maxB = 9;
+
+            if (currentMode === 'table_easy') {
+                minA = 2; maxA = 5;
+            } else if (currentMode === 'table_hard') {
+                minA = 6; maxA = 9;
+            }
+
+            let a, b, key, product;
+            let maxAttempts = 30; // 중복 방지 반복 횟수 제한
+
+            if (currentMode === 'reverse') {
+                // 한 자리 수의 곱으로 나오는 모든 결과값 목록 (다양한 약수 문제)
+                const validProducts = [
+                    4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 24, 25, 27, 28, 
+                    30, 32, 35, 36, 40, 42, 45, 48, 49, 54, 56, 63, 64, 72, 81
+                ];
+
+                do {
+                    product = validProducts[Math.floor(Math.random() * validProducts.length)];
+                    key = `rev_${product}`;
+                    maxAttempts--;
+                } while (problemHistory.includes(key) && maxAttempts > 0);
+
+                problemHistory.push(key);
+                if (problemHistory.length > 12) problemHistory.shift(); // 최근 12문제 중복 금지
+
+                return {
+                    questionStr: `? × ? = ${product}`,
+                    validAnswers: getValidFactors(product),
+                    a: product,
+                    b: product,
+                    isReverse: true,
+                    rawProduct: product
+                };
+            } else {
+                do {
+                    a = Math.floor(Math.random() * (maxA - minA + 1)) + minA;
+                    b = Math.floor(Math.random() * (maxB - minB + 1)) + minB;
+                    key = `${a}x${b}`;
+                    maxAttempts--;
+                } while (problemHistory.includes(key) && maxAttempts > 0);
+
+                problemHistory.push(key);
+                if (problemHistory.length > 12) problemHistory.shift();
+
+                return {
+                    questionStr: `${a} × ${b} = ?`,
+                    targetAnswer: (a * b).toString(),
+                    a: a,
+                    b: b,
+                    isReverse: false
+                };
+            }
+        }
+
+        // For reverse mode: find ALL single-digit factor pairs including 1
+        function getValidFactors(prod) {
+            const pairs = [];
+            for (let i = 1; i <= 9; i++) {
+                if (prod % i === 0) {
+                    const j = prod / i;
+                    if (j >= 1 && j <= 9) {
+                        pairs.push(`${i}${j}`);
+                        pairs.push(`${i}*${j}`);
+                        pairs.push(`${i}x${j}`);
+                        pairs.push(`${i}X${j}`);
+                    }
+                }
+            }
+            return pairs;
+        }
+
+        function nextProblem() {
+            currentProblem = generateProblem();
+            questionText.innerText = currentProblem.questionStr;
+            userInput = '';
+            isProcessing = false;
+            updateInputDisplay();
+
+            if (currentProblem.isReverse) {
+                reverseHint.classList.remove('hidden');
+            } else {
+                reverseHint.classList.add('hidden');
+            }
+
+            gameProgressText.innerText = `해결: ${totalSolved}개`;
+            problemStartTime = Date.now();
+        }
+
+        function updateInputDisplay() {
+            if (userInput === '') {
+                userInputDisplay.innerText = '';
+                userInputDisplay.classList.add('border-slate-700');
+                userInputDisplay.classList.remove('border-indigo-400');
+            } else {
+                userInputDisplay.innerText = userInput;
+                userInputDisplay.classList.remove('border-slate-700');
+                userInputDisplay.classList.add('border-indigo-400');
+            }
+        }
+
+        // Highlight Virtual Key for visual feedback
+        function animateVirtualKey(key) {
+            let btnId = `btn-key-${key}`;
+            if (key === 'Backspace') btnId = 'btn-key-clear';
+            if (key === 'Enter') btnId = 'btn-key-enter';
+
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.classList.add('key-active');
+                setTimeout(() => btn.classList.remove('key-active'), 120);
+            }
+        }
+
+        function pressNum(digit) {
+            if (isProcessing) return;
+            playSound('click');
+            animateVirtualKey(digit);
+
+            if (userInput.length < 4) {
+                userInput += digit;
+                updateInputDisplay();
+            }
+
+            // Automatic validation on reaching full answer length
+            if (!currentProblem.isReverse) {
+                if (userInput.length === currentProblem.targetAnswer.length) {
+                    checkAnswer();
+                }
+            } else {
+                if (userInput.length === 2) {
+                    checkAnswer();
+                }
+            }
+        }
+
+        function pressClear() {
+            if (isProcessing) return;
+            playSound('click');
+            animateVirtualKey('Backspace');
+            userInput = '';
+            updateInputDisplay();
+        }
+
+        function pressSubmit() {
+            if (isProcessing) return;
+            animateVirtualKey('Enter');
+            if (userInput.length > 0) {
+                checkAnswer();
+            }
+        }
+
+        function checkAnswer() {
+            isProcessing = true;
+            const timeTaken = (Date.now() - problemStartTime) / 1000;
+            let isCorrect = false;
+
+            if (currentProblem.isReverse) {
+                if (currentProblem.validAnswers.includes(userInput)) {
+                    isCorrect = true;
+                }
+            } else {
+                if (userInput === currentProblem.targetAnswer) {
+                    isCorrect = true;
+                }
+            }
+
+            if (isCorrect) {
+                playSound('correct');
+                totalSolved++;
+                correctAnswers++;
+
+                // Track times
+                if (!tableTimes[currentProblem.a]) tableTimes[currentProblem.a] = [];
+                tableTimes[currentProblem.a].push(timeTaken);
+
+                // Update live speed
+                const overallAvg = calculateOverallAvgSpeed();
+                liveSpeed.innerText = overallAvg.toFixed(1) + '초';
+
+                // Visual Green Feedback
+                feedbackMessage.innerText = `⭕ 정답! (${timeTaken.toFixed(1)}초)`;
+                feedbackMessage.className = "text-xs font-bold h-4 text-emerald-400 transition-opacity opacity-100 animate-pop";
+                problemCard.classList.add('border-emerald-500/80');
+
+                setTimeout(() => {
+                    feedbackMessage.className = "text-xs font-bold h-4 text-emerald-400 transition-opacity opacity-0";
+                    problemCard.classList.remove('border-emerald-500/80');
+                    nextProblem();
+                }, 180);
+
+            } else {
+                playSound('wrong');
+                wrongAnswers++;
+
+                const correctText = currentProblem.isReverse ? 
+                    `약수 곱` : `${currentProblem.targetAnswer}`;
+
+                // Visual Red Shake Feedback
+                feedbackMessage.innerText = `❌ 오답! (정답: ${correctText})`;
+                feedbackMessage.className = "text-xs font-bold h-4 text-rose-400 transition-opacity opacity-100";
+                problemCard.classList.add('animate-shake', 'border-rose-500/80');
+
+                setTimeout(() => {
+                    problemCard.classList.remove('animate-shake', 'border-rose-500/80');
+                    userInput = '';
+                    updateInputDisplay();
+                    feedbackMessage.className = "text-xs font-bold h-4 text-rose-400 transition-opacity opacity-0";
+                    isProcessing = false;
+                }, 600);
+            }
+        }
+
+        function calculateOverallAvgSpeed() {
+            let totalTimes = [];
+            for (let t in tableTimes) {
+                totalTimes = totalTimes.concat(tableTimes[t]);
+            }
+            if (totalTimes.length === 0) return 0;
+            const sum = totalTimes.reduce((acc, curr) => acc + curr, 0);
+            return sum / totalTimes.length;
+        }
+
+        function endGame() {
+            if (timerInterval) clearInterval(timerInterval);
+            playSound('finish');
+            updateStreakOnFinish();
+
+            screenGame.classList.add('hidden');
+            screenResult.classList.remove('hidden');
+
+            const avgSpeed = calculateOverallAvgSpeed();
+            const totalAttempts = correctAnswers + wrongAnswers;
+            const accuracy = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 100;
+
+            // UI Elements
+            document.getElementById('res-avg-speed').innerText = avgSpeed > 0 ? `${avgSpeed.toFixed(2)}초` : '-';
+            document.getElementById('res-solved').innerText = `${correctAnswers}문항`;
+            document.getElementById('res-accuracy').innerText = `${accuracy}%`;
+
+            const evalBox = document.getElementById('speed-eval-box');
+            const badge = document.getElementById('result-badge');
+            const resultTitle = document.getElementById('result-title');
+            const resultEmoji = document.getElementById('result-emoji');
+
+            if (avgSpeed > 0 && avgSpeed <= 1.5 && accuracy >= 90) {
+                confetti({ particleCount: 90, spread: 60, origin: { y: 0.6 } });
+                resultEmoji.innerText = '🏆';
+                badge.className = "bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full border border-emerald-500/30 font-bold";
+                badge.innerText = "5학년 실전 완벽 대비!";
+                resultTitle.innerText = "1.5초 자동반사 마스터!";
+                evalBox.className = "p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-emerald-200 text-xs leading-relaxed";
+                evalBox.innerHTML = `<strong>⚡ 환상적인 입력 속도 (평균 ${avgSpeed.toFixed(1)}초):</strong><br>키보드 적응과 구구단 암기가 완벽합니다! 분수의 약분·통분 문제를 풀 때 연산 속도가 빠른 무기가 됩니다.`;
+            } else if (avgSpeed > 0 && avgSpeed <= 2.5 && accuracy >= 80) {
+                resultEmoji.innerText = '👏';
+                badge.className = "bg-indigo-500/20 text-indigo-300 text-xs px-3 py-1 rounded-full border border-indigo-500/30 font-bold";
+                badge.innerText = "안정적인 흐름!";
+                resultTitle.innerText = "키보드 적응 완료!";
+                evalBox.className = "p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 text-indigo-200 text-xs leading-relaxed";
+                evalBox.innerHTML = `<strong>👍 빠른 속도 (평균 ${avgSpeed.toFixed(1)}초):</strong><br>손가락 위치가 눈에 익고 있습니다! 매일 2분씩 진행하면 목표인 1.5초 이내 자동반사 단계에 완벽 진입합니다.`;
+            } else {
+                resultEmoji.innerText = '🌱';
+                badge.className = "bg-amber-500/20 text-amber-300 text-xs px-3 py-1 rounded-full border border-amber-500/30 font-bold";
+                badge.innerText = "차근차근 실력 향상 중!";
+                resultTitle.innerText = "꾸준히 연습해 봐요!";
+                evalBox.className = "p-3.5 rounded-xl border border-amber-500/30 bg-amber-950/20 text-amber-200 text-xs leading-relaxed";
+                evalBox.innerHTML = `<strong>💡 키보드 넘버패드 연습 권장 (평균 ${avgSpeed.toFixed(1)}초):</strong><br>아직 키 자리가 다소 헷갈릴 수 있습니다. 1단계(키보드 적응)에서 위치를 먼저 익히면 훨씬 속도가 빨라집니다.`;
+            }
+
+            // Identify weakest table
+            let slowestTable = null;
+            let slowestTime = 0;
+            for (let t = 2; t <= 9; t++) {
+                if (tableTimes[t] && tableTimes[t].length > 0) {
+                    const sum = tableTimes[t].reduce((a, b) => a + b, 0);
+                    const avg = sum / tableTimes[t].length;
+                    if (avg > slowestTime) {
+                        slowestTime = avg;
+                        slowestTable = t;
+                    }
+                }
+            }
+
+            const weaknessText = document.getElementById('weakness-text');
+            if (slowestTable && slowestTime > 1.8) {
+                weaknessText.innerHTML = `<span class="text-amber-300 font-bold">${slowestTable}단</span> 반응 속도(평균 ${slowestTime.toFixed(1)}초)가 조금 느립니다. 2단계의 해당 단을 집중 연습해보세요!`;
+            } else {
+                weaknessText.innerText = "모든 단에서 치우침 없는 반응 속도를 보였습니다!";
+            }
+        }
+
+        function quitGame() {
+            if (timerInterval) clearInterval(timerInterval);
+            showSelectScreen();
+        }
+
+        function showSelectScreen() {
+            screenGame.classList.add('hidden');
+            screenResult.classList.add('hidden');
+            screenSelect.classList.remove('hidden');
+        }
+
+        // Global Keyboard Event Listener
+        document.addEventListener('keydown', (e) => {
+            if (screenGame.classList.contains('hidden')) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                pressNum(e.key);
+            } else if (e.key === 'Enter') {
+                pressSubmit();
+            } else if (e.key === 'Backspace') {
+                pressClear();
+            } else if (e.key === 'Escape') {
+                quitGame();
+            }
+        });
+
+        // Sound Toggle Handler
+        document.getElementById('sound-toggle').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-toggle').innerText = soundEnabled ? '🔊' : '🔇';
+        });
+
+        // Initialize App on Load
+        window.onload = function() {
+            initStreak();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidNickname(name) {
+      return name is string && name.size() >= 2 && name.size() <= 20;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['nickname', 'passwordHash', 'createdAt']) &&
+             data.keys().hasOnly(['nickname', 'passwordHash', 'createdAt', 'lastLoginAt', 'bestSpeed', 'totalSolved']) &&
+             isValidNickname(data.nickname) &&
+             data.passwordHash is string && data.passwordHash.size() <= 64;
+    }
+
+    function isValidScore(data) {
+      return data.keys().hasAll(['nickname', 'mode', 'score', 'correctCount', 'accuracy', 'avgSpeed', 'createdAt']) &&
+             data.keys().hasOnly(['nickname', 'mode', 'modeTitle', 'score', 'correctCount', 'wrongCount', 'accuracy', 'avgSpeed', 'createdAt']) &&
+             isValidNickname(data.nickname) &&
+             data.mode in ['stage1', 'table_easy', 'table_hard', 'speedrun', 'reverse'] &&
+             data.score is number && data.score >= 0 &&
+             data.correctCount is number && data.correctCount >= 0 &&
+             data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 100 &&
+             data.avgSpeed is number && data.avgSpeed >= 0;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Test connection doc
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Student user accounts
+    match /users/{nickname} {
+      allow get: if true;
+      allow create: if isValidNickname(nickname) && isValidUser(request.resource.data);
+      allow update: if isValidNickname(nickname) && isValidUser(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Hall of Fame - Game scores
+    match /game_scores/{scoreId} {
+      allow get, list: if true;
+      allow create: if isValidScore(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}

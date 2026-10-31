@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student user account with nickname and password hash",
+      "type": "object",
+      "properties": {
+        "nickname": {
+          "type": "string",
+          "description": "Student nickname",
+          "minLength": 2,
+          "maxLength": 20
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "SHA-256 hash of student password",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last login timestamp"
+        },
+        "bestSpeed": {
+          "type": "number",
+          "description": "Best average speed in seconds"
+        },
+        "totalSolved": {
+          "type": "number",
+          "description": "Total solved problems"
+        }
+      },
+      "required": ["nickname", "passwordHash", "createdAt"]
+    },
+    "GameScore": {
+      "title": "GameScore",
+      "description": "Hall of fame score record for multiplication training",
+      "type": "object",
+      "properties": {
+        "nickname": {
+          "type": "string",
+          "description": "Student nickname",
+          "minLength": 2,
+          "maxLength": 20
+        },
+        "mode": {
+          "type": "string",
+          "description": "Training mode identifier",
+          "enum": ["stage1", "table_easy", "table_hard", "speedrun", "reverse"]
+        },
+        "modeTitle": {
+          "type": "string",
+          "description": "Friendly title of the mode",
+          "maxLength": 50
+        },
+        "score": {
+          "type": "number",
+          "description": "Calculated score or points"
+        },
+        "correctCount": {
+          "type": "number",
+          "description": "Number of correct answers"
+        },
+        "wrongCount": {
+          "type": "number",
+          "description": "Number of wrong answers"
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "Accuracy percentage"
+        },
+        "avgSpeed": {
+          "type": "number",
+          "description": "Average speed per question in seconds"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Record creation timestamp"
+        }
+      },
+      "required": ["nickname", "mode", "score", "correctCount", "accuracy", "avgSpeed", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{nickname}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Learner accounts indexed by unique nickname"
+    },
+    "/game_scores/{scoreId}": {
+      "schema": {
+        "$ref": "#/entities/GameScore"
+      },
+      "description": "Hall of fame records for all learners"
+    }
+  }
+}

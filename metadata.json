@@ -1,0 +1,6 @@
+{
+  "name": "구구단 스피드 마스터",
+  "description": "초등 5학년 구구단 스피드 마스터 - 닉네임 회원가입 및 명예의 전당 랭킹 시스템",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
