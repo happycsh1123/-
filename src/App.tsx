@@ -5,11 +5,15 @@ import { ModeSelectScreen } from './components/ModeSelectScreen';
 import { GameScreen, GameMode, GameResultData } from './components/GameScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { LeaderboardView } from './components/LeaderboardView';
+import { BadgeShowcaseModal } from './components/BadgeShowcaseModal';
+import { BadgeUnlockedModal } from './components/BadgeUnlockedModal';
 import {
   StudentProfile,
   getStoredStudent,
   setStoredStudent,
+  updateStudentStreak,
 } from './services/studentService';
+import { BadgeDefinition, awardBadgeToStudent } from './services/badgeService';
 import { isSoundEnabled, toggleSound, playSound } from './utils/sound';
 
 type AppView = 'auth' | 'select' | 'game' | 'result' | 'leaderboard';
@@ -18,10 +22,13 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('auth');
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [currentMode, setCurrentMode] = useState<GameMode>('speedrun');
+  const [selectedTable, setSelectedTable] = useState<number>(7);
   const [lastResult, setLastResult] = useState<GameResultData | null>(null);
   const [soundActive, setSoundActive] = useState<boolean>(true);
   const [streak, setStreak] = useState<number>(0);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showBadgeModal, setShowBadgeModal] = useState<boolean>(false);
+  const [unlockedBadge, setUnlockedBadge] = useState<BadgeDefinition | null>(null);
 
   // Initialize student session & streak
   useEffect(() => {
@@ -41,10 +48,14 @@ export default function App() {
 
       const today = new Date().toDateString();
       if (lastDate !== today) {
-        const nextStreak = savedStreak === 0 ? 1 : savedStreak;
+        const nextStreak = savedStreak === 0 ? 1 : savedStreak + 1;
         setStreak(nextStreak);
         localStorage.setItem('gugudan_streak', nextStreak.toString());
         localStorage.setItem('gugudan_last_date', today);
+
+        if (saved) {
+          updateStudentStreak(saved.nickname, nextStreak);
+        }
       }
     } catch {
       // ignore storage errors
@@ -63,28 +74,37 @@ export default function App() {
     setCurrentView('auth');
   };
 
-  const handleStartMode = (mode: GameMode) => {
+  const handleStartMode = (mode: GameMode, targetTable?: number) => {
     setCurrentMode(mode);
+    if (targetTable) {
+      setSelectedTable(targetTable);
+    }
     setCurrentView('game');
+  };
+
+  const handleBadgeEarned = async (badgeId: string) => {
+    if (!student || !student.nickname) return;
+    try {
+      const { newlyAwarded, badge } = await awardBadgeToStudent(student.nickname, badgeId);
+      if (newlyAwarded && badge) {
+        setUnlockedBadge(badge);
+        // Refresh local student
+        const fresh = getStoredStudent();
+        if (fresh) setStudent(fresh);
+      }
+    } catch (err) {
+      console.warn('Error awarding badge:', err);
+    }
   };
 
   const handleGameFinish = (result: GameResultData) => {
     setLastResult(result);
     setCurrentView('result');
 
-    // Update streak on game complete
-    try {
-      const today = new Date().toDateString();
-      const lastDate = localStorage.getItem('gugudan_last_date');
-      let currentStreakVal = parseInt(localStorage.getItem('gugudan_streak') || '1', 10);
-      if (lastDate !== today) {
-        currentStreakVal += 1;
-        localStorage.setItem('gugudan_streak', currentStreakVal.toString());
-        localStorage.setItem('gugudan_last_date', today);
-        setStreak(currentStreakVal);
-      }
-    } catch {
-      // ignore
+    // Refresh stored student object for updated solved count, speed, and badges
+    const updated = getStoredStudent();
+    if (updated) {
+      setStudent(updated);
     }
   };
 
@@ -109,6 +129,9 @@ export default function App() {
         }}
         onOpenAuth={() => {
           setShowAuthModal(true);
+        }}
+        onOpenBadges={() => {
+          setShowBadgeModal(true);
         }}
         onLogout={handleLogout}
         onGoHome={() => {
@@ -147,6 +170,7 @@ export default function App() {
             onSelectMode={handleStartMode}
             onOpenLeaderboard={() => setCurrentView('leaderboard')}
             onOpenAuth={() => setShowAuthModal(true)}
+            onOpenBadges={() => setShowBadgeModal(true)}
           />
         )}
 
@@ -154,8 +178,11 @@ export default function App() {
         {currentView === 'game' && (
           <GameScreen
             mode={currentMode}
+            targetTable={selectedTable}
+            studentNickname={student?.nickname}
             onFinish={handleGameFinish}
             onQuit={() => setCurrentView('select')}
+            onBadgeEarned={handleBadgeEarned}
           />
         )}
 
@@ -164,9 +191,17 @@ export default function App() {
           <ResultScreen
             result={lastResult}
             student={student}
-            onGoToLeaderboard={() => setCurrentView('leaderboard')}
+            onGoToLeaderboard={() => {
+              const fresh = getStoredStudent();
+              if (fresh) setStudent(fresh);
+              setCurrentView('leaderboard');
+            }}
             onPlayAgain={() => setCurrentView('game')}
-            onGoToMenu={() => setCurrentView('select')}
+            onGoToMenu={() => {
+              const fresh = getStoredStudent();
+              if (fresh) setStudent(fresh);
+              setCurrentView('select');
+            }}
           />
         )}
 
@@ -174,6 +209,7 @@ export default function App() {
         {currentView === 'leaderboard' && (
           <LeaderboardView
             currentNickname={student?.nickname}
+            currentStudentSolved={student?.totalSolved}
             onBackToMenu={() => {
               if (student) setCurrentView('select');
               else setCurrentView('auth');
@@ -185,6 +221,30 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Badge Showcase Modal */}
+      {showBadgeModal && (
+        <BadgeShowcaseModal
+          student={student}
+          onClose={() => setShowBadgeModal(false)}
+          onStartTableChallenge={(tableNum) => {
+            setShowBadgeModal(false);
+            handleStartMode('table_single', tableNum);
+          }}
+        />
+      )}
+
+      {/* Badge Unlocked Celebration Modal */}
+      {unlockedBadge && (
+        <BadgeUnlockedModal
+          badge={unlockedBadge}
+          onClose={() => setUnlockedBadge(null)}
+          onViewAllBadges={() => {
+            setUnlockedBadge(null);
+            setShowBadgeModal(true);
+          }}
+        />
+      )}
 
       {/* Floating Auth Modal when requested from other screens */}
       {showAuthModal && (
